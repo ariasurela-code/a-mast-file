@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Finger Paint</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; }
+  body {
+    background: #111;
+    overflow: hidden;
+    font-family: -apple-system, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  #toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: #1c1c1e;
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+  .color-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    flex-shrink: 0;
+  }
+  .color-btn.active {
+    border-color: #fff;
+  }
+  #sizeRange {
+    width: 90px;
+    flex-shrink: 0;
+  }
+  .icon-btn {
+    background: #333;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  #canvasWrap {
+    flex: 1;
+    position: relative;
+  }
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: #fff;
+  }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <button class="icon-btn" id="eraseBtn">🧹 Erase</button>
+  <button class="icon-btn" id="clearBtn">🗑️ Clear</button>
+  <div class="color-btn active" style="background:#000" data-color="#000000"></div>
+  <div class="color-btn" style="background:#e53935" data-color="#e53935"></div>
+  <div class="color-btn" style="background:#1e88e5" data-color="#1e88e5"></div>
+  <div class="color-btn" style="background:#43a047" data-color="#43a047"></div>
+  <div class="color-btn" style="background:#fdd835" data-color="#fdd835"></div>
+  <div class="color-btn" style="background:#8e24aa" data-color="#8e24aa"></div>
+  <div class="color-btn" style="background:#fb8c00" data-color="#fb8c00"></div>
+  <input type="range" id="sizeRange" min="1" max="40" value="5">
+</div>
+
+<div id="canvasWrap">
+  <canvas id="board"></canvas>
+</div>
+
+<script>
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvasWrap');
+
+function resizeCanvas() {
+  const imgData = canvas.width ? ctx.getImageData(0, 0, canvas.width, canvas.height) : null;
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (imgData) ctx.putImageData(imgData, 0, 0);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+let drawing = false;
+let lastX = 0, lastY = 0;
+let currentColor = '#000000';
+let currentSize = 5;
+let erasing = false;
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const touch = e.touches ? e.touches[0] : e;
+  return {
+    x: touch.clientX - rect.left,
+    y: touch.clientY - rect.top
+  };
+}
+
+function startDraw(e) {
+  e.preventDefault();
+  drawing = true;
+  const pos = getPos(e);
+  lastX = pos.x;
+  lastY = pos.y;
+  // dot on tap
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, (erasing ? currentSize * 2 : currentSize) / 2, 0, Math.PI * 2);
+  ctx.fillStyle = erasing ? '#ffffff' : currentColor;
+  ctx.fill();
+}
+
+function draw(e) {
+  if (!drawing) return;
+  e.preventDefault();
+  const pos = getPos(e);
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(pos.x, pos.y);
+  ctx.strokeStyle = erasing ? '#ffffff' : currentColor;
+  ctx.lineWidth = erasing ? currentSize * 2 : currentSize;
+  ctx.stroke();
+  lastX = pos.x;
+  lastY = pos.y;
+}
+
+function stopDraw() {
+  drawing = false;
+}
+
+canvas.addEventListener('touchstart', startDraw, { passive: false });
+canvas.addEventListener('touchmove', draw, { passive: false });
+canvas.addEventListener('touchend', stopDraw);
+
+canvas.addEventListener('mousedown', startDraw);
+canvas.addEventListener('mousemove', draw);
+canvas.addEventListener('mouseup', stopDraw);
+canvas.addEventListener('mouseleave', stopDraw);
+
+document.querySelectorAll('.color-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentColor = btn.dataset.color;
+    erasing = false;
+    document.getElementById('eraseBtn').style.background = '#333';
+  });
+});
+
+document.getElementById('sizeRange').addEventListener('input', (e) => {
+  currentSize = parseInt(e.target.value);
+});
+
+document.getElementById('eraseBtn').addEventListener('click', () => {
+  erasing = !erasing;
+  document.getElementById('eraseBtn').style.background = erasing ? '#555' : '#333';
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+});
+</script>
+
+</body>
+</html>
