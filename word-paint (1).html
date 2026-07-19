@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document1 - Word</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root{
+  --ribbon-bg:#f3f2f1;
+  --ribbon-border:#d3d1cf;
+  --accent:#185abd;
+  --accent-light:#e8f0fe;
+  --text:#242424;
+  --titlebar-red:#b7181f;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:"Segoe UI","Calibri",Arial,sans-serif;color:var(--text);background:#c8c6c4;height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:13px;}
+
+/* ===== TITLE BAR ===== */
+#titlebar{background:var(--titlebar-red);color:#fff;height:26px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;flex-shrink:0;font-size:12px;}
+#titlebar .qat{display:flex;align-items:center;gap:6px;}
+#titlebar .qat button{background:none;border:none;color:#fff;cursor:pointer;padding:2px;opacity:.9;}
+#titlebar .qat button:hover{opacity:1;background:rgba(255,255,255,.15);border-radius:3px;}
+#titlebar .qat svg{width:14px;height:14px;display:block;}
+#titlebar .doctitle{position:absolute;left:50%;transform:translateX(-50%);font-size:12px;}
+#titlebar .win-icons{display:flex;gap:14px;align-items:center;}
+#titlebar .win-icons span{cursor:pointer;font-size:13px;}
+
+/* ===== RIBBON ===== */
+#ribbon{background:#fff;flex-shrink:0;border-bottom:1px solid var(--ribbon-border);position:relative;}
+#tabbar{display:flex;background:#fff;padding-left:6px;font-size:13px;user-select:none;}
+#tabbar .tab{padding:6px 12px;cursor:pointer;color:#444;border-bottom:2px solid transparent;}
+#tabbar .tab.filetab{background:var(--titlebar-red);color:#fff;padding:6px 14px;}
+#tabbar .tab.active{color:var(--accent);border-bottom:2px solid var(--accent);font-weight:600;}
+#tabbar .tab:hover:not(.filetab){color:var(--accent);}
+
+.ribbonBody{display:none;background:var(--ribbon-bg);padding:4px 6px 2px;gap:0;align-items:stretch;overflow-x:auto;}
+.ribbonBody.show{display:flex;}
+.group{display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 8px;border-right:1px solid #d9d7d5;min-height:86px;}
+.group:last-child{border-right:none;}
+.group-rows{display:flex;flex-direction:column;gap:2px;flex:1;justify-content:center;}
+.group-row{display:flex;align-items:center;gap:2px;}
+.group-label{font-size:11px;color:#555;margin-top:2px;display:flex;align-items:center;gap:2px;white-space:nowrap;}
+.launcher{cursor:pointer;color:#666;font-size:9px;}
+
+.btn{background:none;border:1px solid transparent;border-radius:2px;padding:3px 4px;cursor:pointer;display:flex;align-items:center;gap:3px;color:#333;font-size:12px;white-space:nowrap;}
+.btn:hover{background:#e4e2e0;border-color:#c8c6c4;}
+.btn.active{background:#d9ebf9;border-color:#8ec2f2;}
+.btn svg{width:16px;height:16px;flex-shrink:0;}
+.btn.big{flex-direction:column;height:64px;justify-content:flex-start;padding-top:4px;font-size:11px;}
+.btn.big svg{width:28px;height:28px;}
+.btn small-arrow{font-size:8px;}
+.arrow{font-size:8px;color:#555;margin-left:1px;}
+
+select.rselect{border:1px solid #c8c6c4;background:#fff;border-radius:2px;padding:2px 3px;font-size:12px;}
+#fontFamily{width:110px;}
+#fontSize{width:44px;}
+.colorpick{position:relative;display:inline-flex;flex-direction:column;align-items:center;}
+.colorpick input[type=color]{position:absolute;opacity:0;width:20px;height:20px;cursor:pointer;top:14px;left:0;}
+.color-bar{width:16px;height:3px;margin-top:1px;border-radius:1px;}
+
+/* Styles gallery */
+#stylesGallery{display:flex;gap:2px;overflow-x:auto;max-width:520px;padding:2px;}
+.style-thumb{border:1px solid #d9d7d5;border-radius:2px;padding:4px 8px;min-width:64px;text-align:center;cursor:pointer;background:#fff;font-size:11px;line-height:1.3;}
+.style-thumb:hover{border-color:var(--accent);}
+.style-thumb.selected{border:2px solid var(--accent);background:var(--accent-light);}
+.style-thumb .preview{font-weight:400;}
+.style-thumb.title-preview .preview{font-size:20px;font-family:"Calibri Light",Calibri,sans-serif;}
+.style-thumb.heading1-preview .preview{font-size:16px;color:#2E74B5;font-weight:600;}
+.style-thumb.heading2-preview .preview{font-size:14px;color:#2E74B5;font-weight:600;}
+.style-thumb.subtitle-preview .preview{font-style:italic;color:#666;}
+.style-thumb.strong-preview .preview{font-weight:700;}
+.style-thumb.emphasis-preview .preview{font-style:italic;}
+.style-thumb.intense-preview .preview{font-style:italic;font-weight:700;color:#2E74B5;}
+.style-thumb.subtleem-preview .preview{color:#767171;}
+.style-thumb.quote-preview .preview{font-style:italic;color:#404040;}
+
+/* ===== DOC AREA ===== */
+#docArea{flex:1;overflow:auto;background:#a9a7a5;display:flex;justify-content:center;padding:24px 0 60px;}
+#pageWrap{position:relative;background:#fff;box-shadow:0 0 8px rgba(0,0,0,.35);margin:0 auto;flex-shrink:0;transform-origin:top center;}
+#page{width:100%;height:100%;outline:none;padding:96px;box-sizing:border-box;font-family:Calibri,"Segoe UI",sans-serif;font-size:14px;line-height:1.5;overflow:hidden;}
+#page h1{font-family:"Calibri Light",Calibri,sans-serif;font-size:28px;font-weight:400;margin:0 0 4px;}
+#page h1.doc-title{font-size:32px;color:#0f4761;}
+#page h2{font-size:16px;color:#2E74B5;font-weight:600;margin:14px 0 4px;}
+#page p{margin:0 0 10px;}
+#page p.nospacing{margin:0;}
+#page p.doc-subtitle{font-style:italic;color:#666;font-size:16px;margin:0 0 12px;}
+#page blockquote{border-left:3px solid #999;margin:8px 0;padding:2px 0 2px 14px;font-style:italic;color:#404040;}
+#page em.subtle-em{color:#767171;font-style:italic;}
+#page span.intense-em{font-style:italic;font-weight:700;color:#2E74B5;}
+#inkCanvas{position:absolute;top:0;left:0;pointer-events:none;}
+
+/* Shape grid / dropdown popovers */
+.popover{position:absolute;top:100%;left:0;background:#fff;border:1px solid #c8c6c4;box-shadow:0 4px 10px rgba(0,0,0,.25);z-index:50;padding:8px;display:none;border-radius:3px;min-width:150px;}
+.popover.show{display:block;}
+.popover .row{display:flex;gap:4px;flex-wrap:wrap;max-width:200px;}
+.swatch{width:20px;height:20px;border-radius:2px;cursor:pointer;border:1px solid rgba(0,0,0,.15);}
+.popover .item{padding:5px 8px;cursor:pointer;border-radius:2px;font-size:12px;}
+.popover .item:hover{background:#eef3fb;}
+
+/* Modals */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;align-items:center;justify-content:center;}
+.modal-bg.show{display:flex;}
+.modal{background:#fff;border-radius:4px;padding:18px;min-width:300px;box-shadow:0 6px 24px rgba(0,0,0,.3);}
+.modal h3{margin:0 0 10px;font-size:15px;}
+.modal input,.modal select{width:100%;padding:6px;margin-bottom:8px;border:1px solid #ccc;border-radius:3px;font-size:13px;}
+.modal .mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:8px;}
+.modal button.ok{background:var(--accent);color:#fff;border:none;padding:6px 14px;border-radius:3px;cursor:pointer;}
+.modal button.cancel{background:#e4e2e0;border:none;padding:6px 14px;border-radius:3px;cursor:pointer;}
+
+/* File backstage */
+#backstage{display:none;position:fixed;inset:0;background:#f3f2f1;z-index:400;}
+#backstage.show{display:flex;}
+#backstage .side{width:200px;background:#2b579a;color:#fff;padding:20px 0;}
+#backstage .side .bitem{padding:10px 20px;cursor:pointer;}
+#backstage .side .bitem:hover,#backstage .side .bitem.active{background:#3a6bb5;}
+#backstage .main{flex:1;padding:30px;overflow:auto;}
+#backstage .main h2{font-weight:300;font-size:26px;margin-top:0;}
+#backstage .opt{padding:10px;border:1px solid #ddd;margin-bottom:8px;border-radius:3px;cursor:pointer;max-width:340px;}
+#backstage .opt:hover{background:#eef3fb;}
+#backstage .close-x{position:absolute;top:14px;right:24px;font-size:22px;cursor:pointer;color:#333;}
+
+#infoBar{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:6px 14px;border-radius:16px;font-size:12px;opacity:0;transition:opacity .3s;z-index:600;pointer-events:none;}
+#infoBar.show{opacity:1;}
+
+/* Draw tool color/size widgets */
+.pen-swatch{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;}
+.pen-swatch.active{border-color:#333;}
+</style>
+</head>
+<body>
+
+<!-- TITLE BAR -->
+<div id="titlebar">
+  <div class="qat">
+    <button title="Save" id="qatSave"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg></button>
+    <button title="Undo" id="qatUndo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h11a5 5 0 0 1 0 10h-1"/><path d="M7 5 3 10l4 5"/></svg></button>
+    <button title="Redo" id="qatRedo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10H10a5 5 0 0 0 0 10h1"/><path d="M17 5l4 5-4 5"/></svg></button>
+    <span style="opacity:.6;font-size:9px;">▾</span>
+  </div>
+  <div class="doctitle">Document1 - Word</div>
+  <div class="win-icons">
+    <span title="Help">?</span>
+    <span title="Minimize">&#8211;</span>
+    <span title="Maximize">&#9633;</span>
+    <span title="Close">&#10005;</span>
+  </div>
+</div>
+
+<!-- RIBBON -->
+<div id="ribbon">
+  <div id="tabbar">
+    <div class="tab filetab" data-tab="filebs">FILE</div>
+    <div class="tab active" data-tab="home">HOME</div>
+    <div class="tab" data-tab="insert">INSERT</div>
+    <div class="tab" data-tab="draw">DRAW</div>
+    <div class="tab" data-tab="design">DESIGN</div>
+    <div class="tab" data-tab="layout">PAGE LAYOUT</div>
+    <div class="tab" data-tab="refs">REFERENCES</div>
+    <div class="tab" data-tab="mailings">MAILINGS</div>
+    <div class="tab" data-tab="review">REVIEW</div>
+    <div class="tab" data-tab="view">VIEW</div>
+  </div>
+
+  <!-- HOME -->
+  <div class="ribbonBody show" id="tab-home">
+    <div class="group">
+      <div class="group-rows">
+        <div class="group-row">
+          <button class="btn big" id="pasteBtn" title="Paste"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="12" height="17" rx="1"/><rect x="9" y="2" width="6" height="4" rx="1"/></svg>Paste<span class="arrow">▾</span></button>
+          <div class="group-rows">
+            <button class="btn" id="cutBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.12 15.88M14.47 14.48 20 20M8.12 8.12 12 12"/></svg>Cut</button>
+            <button class="btn" id="copyBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="1"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy</button>
+            <button class="btn" id="paintBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4-9.5 9.5-5.5 1.5 1.5-5.5z"/></svg>Format Painter</button>
+          </div>
+        </div>
+      </div>
+      <div class="group-label">Clipboard <span class="launcher">⇲</span></div>
+    </div>
+
+    <div class="group">
+      <div class="group-rows">
+        <div class="group-row">
+          <select class="rselect" id="fontFamily" style="width:150px;font-family:inherit;">
+            <optgroup label="Common">
+              <option style="font-family:Calibri;">Aptos (Body)</option>
+              <option style="font-family:Calibri;">Calibri</option>
+              <option style="font-family:Arial;">Arial</option>
+              <option style="font-family:'Times New Roman';">Times New Roman</option>
+              <option style="font-family:Georgia;">Georgia</option>
+              <option style="font-family:'Courier New';">Courier New</option>
+              <option style="font-family:Verdana;">Verdana</option>
+              <option style="font-family:Tahoma;">Tahoma</option>
+              <option style="font-family:'Trebuchet MS';">Trebuchet MS</option>
+              <option style="font-family:Cambria;">Cambria</option>
+              <option style="font-family:'Segoe UI';">Segoe UI</option>
+              <option style="font-family:'Book Antiqua';">Book Antiqua</option>
+              <option style="font-family:'Palatino Linotype';">Palatino Linotype</option>
+              <option style="font-family:'Lucida Console';">Lucida Console</option>
+              <option style="font-family:'Century Gothic';">Century Gothic</option>
+              <option style="font-family:Impact;">Impact</option>
+              <option style="font-family:'Comic Sans MS';">Comic Sans MS</option>
+              <option style="font-family:'Brush Script MT', cursive;">Brush Script MT</option>
+            </optgroup>
+            <optgroup label="More (Google Fonts)">
+              <option style="font-family:'Roboto';">Roboto</option>
+              <option style="font-family:'Open Sans';">Open Sans</option>
+              <option style="font-family:'Lato';">Lato</option>
+              <option style="font-family:'Montserrat';">Montserrat</option>
+              <option style="font-family:'Merriweather';">Merriweather</option>
+              <option style="font-family:'Playfair Display';">Playfair Display</option>
+              <option style="font-family:'Oswald';">Oswald</option>
+              <option style="font-family:'Poppins';">Poppins</option>
+              <option style="font-family:'Nunito';">Nunito</option>
+              <option style="font-family:'Raleway';">Raleway</option>
+              <option style="font-family:'Pacifico', cursive;">Pacifico</option>
+              <option style="font-family:'Dancing Script', cursive;">Dancing Script</option>
+              <option style="font-family:'Caveat', cursive;">Caveat</option>
+              <option style="font-family:'Noto Sans Devanagari';">Noto Sans Devanagari (हिंदी)</option>
+              <option style="font-family:'Tiro Devanagari Hindi';">Tiro Devanagari Hindi</option>
+            </optgroup>
+          </select>
+          <select class="rselect" id="fontSize">
+            <option>8</option><option>9</option><option>10</option><option>11</option><option selected>11</option><option>12</option><option>14</option><option>16</option><option>18</option><option>20</option><option>24</option><option>28</option><option>36</option><option>48</option><option>72</option>
+          </select>
+          <button class="btn" id="growFont" title="Grow Font">A<span style="font-size:16px;">A</span></button>
+          <button class="btn" id="shrinkFont" title="Shrink Font"><span style="font-size:16px;">A</span>A</button>
+          <button class="btn" id="clearFormat" title="Clear Formatting"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16M6 4h11l-6 16"/></svg></button>
+        </div>
+        <div class="group-row">
+          <button class="btn" id="boldBtn" title="Bold"><b>B</b></button>
+          <button class="btn" id="italicBtn" title="Italic"><i>I</i></button>
+          <button class="btn" id="underlineBtn" title="Underline"><u>U</u></button>
+          <button class="btn" id="strikeBtn" title="Strikethrough"><s>ab</s></button>
+          <button class="btn" id="subBtn" title="Subscript">x<sub>2</sub></button>
+          <button class="btn" id="supBtn" title="Superscript">x<sup>2</sup></button>
+          <div class="colorpick">
+            <button class="btn" id="highlightBtn" title="Text Highlight Color">🖊<span class="color-bar" id="hlBar" style="background:#ffff00"></span></button>
+            <input type="color" id="hlColor" value="#ffff00">
+          </div>
+          <div class="colorpick">
+            <button class="btn" id="fontColorBtn" title="Font Color">A<span class="color-bar" id="fcBar" style="background:#ff0000"></span></button>
+            <input type="color" id="fcColor" value="#ff0000">
+          </div>
+        </div>
+      </div>
+      <div class="group-label">Font <span class="launcher">⇲</span></div>
+    </div>
+
+    <div class="group">
+      <div class="group-rows">
+        <div class="group-row">
+          <button class="btn" id="ulBtn" title="Bullets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="4" cy="6" r="1.5"/><circle cx="4" cy="12" r="1.5"/><circle cx="4" cy="18" r="1.5"/><path d="M9 6h11M9 12h11M9 18h11"/></svg></button>
+          <button class="btn" id="olBtn" title="Numbering"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6h11M9 12h11M9 18h11"/><text x="1" y="8" font-size="6" fill="currentColor" stroke="none">1</text><text x="1" y="14" font-size="6" fill="currentColor" stroke="none">2</text><text x="1" y="20" font-size="6" fill="currentColor" stroke="none">3</text></svg></button>
+          <button class="btn" id="outdentBtn" title="Decrease Indent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M11 12h10M11 18h10M3 9l3 3-3 3"/></svg></button>
+          <button class="btn" id="indentBtn" title="Increase Indent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M11 12h10M11 18h10M6 9l-3 3 3 3"/></svg></button>
+          <button class="btn" id="showParaBtn" title="Show/Hide ¶">¶</button>
+        </div>
+        <div class="group-row">
+          <button class="btn" id="alignLeft" title="Align Left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h14"/></svg></button>
+          <button class="btn" id="alignCenter" title="Center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M5 18h14"/></svg></button>
+          <button class="btn" id="alignRight" title="Align Right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M10 12h10M6 18h14"/></svg></button>
+          <button class="btn" id="alignJustify" title="Justify"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+          <div class="colorpick">
+            <button class="btn" id="shadingBtn" title="Shading">🪣<span class="color-bar" id="shBar" style="background:#ffffff"></span></button>
+            <input type="color" id="shColor" value="#ffff99">
+          </div>
+        </div>
+      </div>
+      <div class="group-label">Paragraph <span class="launcher">⇲</span></div>
+    </div>
+
+    <div class="group" style="min-width:420px;">
+      <div id="stylesGallery">
+        <div class="style-thumb selected" data-style="normal"><div class="preview">AaBbCcE</div>¶ Normal</div>
+        <div class="style-thumb" data-style="nospacing"><div class="preview">AaBbCcE</div>¶ No Spac...</div>
+        <div class="style-thumb heading1-preview" data-style="heading1"><div class="preview">AaBbCc</div>Heading 1</div>
+        <div class="style-thumb heading2-preview" data-style="heading2"><div class="preview">AaBbCc</div>Heading 2</div>
+        <div class="style-thumb title-preview" data-style="title"><div class="preview">Aa</div>Title</div>
+        <div class="style-thumb subtitle-preview" data-style="subtitle"><div class="preview">AaBbCcE</div>Subtitle</div>
+        <div class="style-thumb subtleem-preview" data-style="subtleem"><div class="preview">AaBbCcE</div>Subtle Em...</div>
+        <div class="style-thumb emphasis-preview" data-style="emphasis"><div class="preview">AaBbCcE</div>Emphasis</div>
+        <div class="style-thumb intense-preview" data-style="intenseem"><div class="preview">AaBbCcE</div>Intense E...</div>
+        <div class="style-thumb strong-preview" data-style="strong"><div class="preview">AaBbCcE</div>Strong</div>
+        <div class="style-thumb quote-preview" data-style="quote"><div class="preview">AaBbCcE</div>Quote</div>
+      </div>
+      <div class="group-label">Styles <span class="launcher">⇲</span></div>
+    </div>
+
+    <div class="group">
+      <div class="group-rows">
+        <button class="btn" id="findBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Find</button>
+        <button class="btn" id="replaceBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h13M4 7l4-4M4 7l4 4M20 17H7M20 17l-4-4M20 17l-4 4"/></svg>Replace</button>
+        <button class="btn" id="selectAllBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h6M3 3v6M21 3h-6M21 3v6M3 21h6M3 21v-6M21 21h-6M21 21v-6"/></svg>Select</button>
+      </div>
+      <div class="group-label">Editing</div>
+    </div>
+  </div>
+
+  <!-- INSERT -->
+  <div class="ribbonBody" id="tab-insert">
+    <div class="group">
+      <div class="group-rows"><button class="btn big" id="insTableBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>Table</button></div>
+      <div class="group-label">Tables</div>
+    </div>
+    <div class="group">
+      <div class="group-rows">
+        <button class="btn big" id="insPictureBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>Pictures</button>
+        <button class="btn big" id="insShapesBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 16H3z"/></svg>Shapes</button>
+      </div>
+      <div class="group-label">Illustrations</div>
+    </div>
+    <div class="group">
+      <div class="group-rows">
+        <button class="btn big" id="insTextboxBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M7 9h10M7 13h6"/></svg>Text Box</button>
+        <button class="btn big" id="insBreakBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M4 12l4-4M4 12l4 4"/></svg>Page Break</button>
+      </div>
+      <div class="group-label">Text</div>
+    </div>
+    <div class="group">
+      <div class="group-rows"><button class="btn big" id="insSymbolBtn"><span style="font-size:22px;">Ω</span>Symbol</button></div>
+      <div class="group-label">Symbols</div>
+    </div>
+  </div>
+
+  <!-- DRAW -->
+  <div class="ribbonBody" id="tab-draw">
+    <div class="group" style="min-width:340px;">
+      <div class="group-rows">
+        <div class="group-row" id="penRow">
+          <button class="btn active" data-pen="0" title="Pen"><svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"><path d="M17 3l4 4-9.5 9.5-5.5 1.5 1.5-5.5z"/></svg></button>
+          <div class="pen-swatch active" style="background:#000" data-color="#000000"></div>
+          <div class="pen-swatch" style="background:#e53935" data-color="#e53935"></div>
+          <div class="pen-swatch" style="background:#1e88e5" data-color="#1e88e5"></div>
+          <div class="pen-swatch" style="background:#43a047" data-color="#43a047"></div>
+          <div class="pen-swatch" style="background:#fdd835" data-color="#fdd835"></div>
+          <input type="color" id="penCustomColor" value="#8e24aa" title="More Colors" style="width:22px;height:22px;border:none;padding:0;">
+          <button class="btn" id="highlighterTool" title="Highlighter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l6-6 4 4-6 6-4-4z"/><path d="M4 20l3-3 4 4-3 3H4v-4z"/></svg></button>
+          <button class="btn" id="eraserTool" title="Eraser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13l-7 7H7l-4-4 9-9z"/><path d="M13 4l7 7-3 3-7-7z"/></svg></button>
+        </div>
+        <div class="group-row">
+          <span style="font-size:11px;color:#555;">Size</span>
+          <input type="range" id="penSize" min="1" max="30" value="3" style="width:80px;">
+          <button class="btn" id="drawToggleBtn" title="Toggle Drawing Mode">✏️ Draw Mode: OFF</button>
+          <button class="btn" id="clearInkBtn" title="Clear Drawing">Clear Ink</button>
+        </div>
+      </div>
+      <div class="group-label">Drawing Tools</div>
+    </div>
+  </div>
+
+  <!-- DESIGN -->
+  <div class="ribbonBody" id="tab-design">
+    <div class="group" style="min-width:260px;">
+      <div class="group-row" style="flex-wrap:wrap;max-width:260px;">
+        <div class="pen-swatch theme-swatch" style="background:#2E74B5" data-theme="#2E74B5"></div>
+        <div class="pen-swatch theme-swatch" style="background:#C00000" data-theme="#C00000"></div>
+        <div class="pen-swatch theme-swatch" style="background:#548235" data-theme="#548235"></div>
+        <div class="pen-swatch theme-swatch" style="background:#7030A0" data-theme="#7030A0"></div>
+        <div class="pen-swatch theme-swatch" style="background:#BF8F00" data-theme="#BF8F00"></div>
+        <div class="pen-swatch theme-swatch" style="background:#000000" data-theme="#000000"></div>
+      </div>
+      <div class="group-label">Document Formatting (Theme Colors)</div>
+    </div>
+    <div class="group">
+      <div class="group-rows"><button class="btn big" id="pageColorBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Page Color</button></div>
+      <div class="group-label">Page Background</div>
+    </div>
+  </div>
+
+  <!-- PAGE LAYOUT -->
+  <div class="ribbonBody" id="tab-layout">
+    <div class="group">
+      <div class="group-rows">
+        <button class="btn" data-margin="normal">Normal Margins</button>
+        <button class="btn" data-margin="narrow">Narrow Margins</button>
+        <button class="btn" data-margin="wide">Wide Margins</button>
+      </div>
+      <div class="group-label">Margins</div>
+    </div>
+    <div class="group">
+      <div class="group-rows">
+        <button class="btn" id="orientPortrait">Portrait</button>
+        <button class="btn" id="orientLandscape">Landscape</button>
+      </div>
+      <div class="group-label">Orientation</div>
+    </div>
+    <div class="group">
+      <div class="group-rows">
+        <button class="btn" data-size="letter">Letter (8.5x11)</button>
+        <button class="btn" data-size="a4">A4 (8.27x11.69)</button>
+      </div>
+      <div class="group-label">Size</div>
+    </div>
+  </div>
+
+  <!-- REFERENCES (mostly decorative) -->
+  <div class="ribbonBody" id="tab-refs">
+    <div class="group"><div class="group-rows"><button class="btn big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14l-3-2-3 2-3-2-3 2-3-2z"/></svg>Table of Contents</button></div><div class="group-label">Table of Contents</div></div>
+    <div class="group"><div class="group-rows"><button class="btn big" id="insCitationBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h9l5 5v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/></svg>Insert Citation</button></div><div class="group-label">Citations & Bibliography</div></div>
+    <div class="group"><div class="group-rows"><button class="btn big" id="insFootnoteBtn">¹ᵃ Footnote</button></div><div class="group-label">Footnotes</div></div>
+  </div>
+
+  <!-- MAILINGS (decorative) -->
+  <div class="ribbonBody" id="tab-mailings">
+    <div class="group"><div class="group-rows"><button class="btn big">✉ Envelopes</button></div><div class="group-label">Create</div></div>
+    <div class="group"><div class="group-rows"><button class="btn big">Start Mail Merge</button></div><div class="group-label">Start Mail Merge</div></div>
+  </div>
+
+  <!-- REVIEW -->
+  <div class="ribbonBody" id="tab-review">
+    <div class="group"><div class="group-rows"><button class="btn big" id="spellcheckBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>Spelling</button></div><div class="group-label">Proofing</div></div>
+    <div class="group"><div class="group-rows"><button class="btn big" id="newCommentBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l2-3.5A8.5 8.5 0 1 1 21 11.5z"/></svg>New Comment</button></div><div class="group-label">Comments</div></div>
+    <div class="group"><div class="group-rows"><button class="btn" id="trackChangesBtn">Track Changes</button></div><div class="group-label">Tracking</div></div>
+  </div>
+
+  <!-- VIEW -->
+  <div class="ribbonBody" id="tab-view">
+    <div class="group">
+      <div class="group-rows">
+        <button class="btn" id="viewPrint">Print Layout</button>
+        <button class="btn" id="viewRead">Read Mode</button>
+      </div>
+      <div class="group-label">Views</div>
+    </div>
+    <div class="group">
+      <div class="group-rows">
+        <span style="font-size:11px;">Zoom</span>
+        <input type="range" id="zoomRange" min="50" max="200" value="100" style="width:120px;">
+        <span id="zoomLabel" style="font-size:11px;">100%</span>
+      </div>
+      <div class="group-label">Zoom</div>
+    </div>
+  </div>
+</div>
+
+<!-- DOC AREA -->
+<div id="docArea">
+  <div id="pageWrap" style="width:816px;min-height:1056px;">
+    <div id="page" contenteditable="true" spellcheck="true">
+      <h1 class="doc-title">Document1</h1>
+      <p class="doc-subtitle">Type your content here — this is a real editable Word-style document.</p>
+      <p>Start typing, or switch to the <b>DRAW</b> tab to sketch, highlight, or annotate right on top of the page — just like a real notebook page laid over your document.</p>
+    </div>
+    <canvas id="inkCanvas"></canvas>
+  </div>
+</div>
+
+<!-- Modals -->
+<div class="modal-bg" id="findModal"><div class="modal">
+  <h3>Find</h3>
+  <input type="text" id="findInput" placeholder="Find what...">
+  <div class="mbtns"><button class="cancel" onclick="closeModal('findModal')">Close</button><button class="ok" onclick="doFind()">Find Next</button></div>
+</div></div>
+
+<div class="modal-bg" id="replaceModal"><div class="modal">
+  <h3>Find & Replace</h3>
+  <input type="text" id="replaceFindInput" placeholder="Find what...">
+  <input type="text" id="replaceWithInput" placeholder="Replace with...">
+  <div class="mbtns"><button class="cancel" onclick="closeModal('replaceModal')">Close</button><button class="ok" onclick="doReplaceAll()">Replace All</button></div>
+</div></div>
+
+<div class="modal-bg" id="tableModal"><div class="modal">
+  <h3>Insert Table</h3>
+  <input type="number" id="tableRows" placeholder="Rows" value="3" min="1">
+  <input type="number" id="tableCols" placeholder="Columns" value="3" min="1">
+  <div class="mbtns"><button class="cancel" onclick="closeModal('tableModal')">Cancel</button><button class="ok" onclick="doInsertTable()">Insert</button></div>
+</div></div>
+
+<div class="modal-bg" id="shapeModal"><div class="modal">
+  <h3>Choose a Shape</h3>
+  <div class="row" style="display:flex;gap:10px;flex-wrap:wrap;max-width:260px;">
+    <button class="btn" style="font-size:26px;" data-shape="rect">▭</button>
+    <button class="btn" style="font-size:26px;" data-shape="circle">◯</button>
+    <button class="btn" style="font-size:26px;" data-shape="triangle">△</button>
+    <button class="btn" style="font-size:26px;" data-shape="arrow">➜</button>
+    <button class="btn" style="font-size:26px;" data-shape="star">★</button>
+    <button class="btn" style="font-size:26px;" data-shape="line">╱</button>
+  </div>
+  <div class="mbtns"><button class="cancel" onclick="closeModal('shapeModal')">Cancel</button></div>
+</div></div>
+
+<!-- FILE BACKSTAGE -->
+<div id="backstage">
+  <div class="side">
+    <div class="bitem active">Info</div>
+    <div class="bitem" id="bsNew">New</div>
+    <div class="bitem" id="bsOpen">Open</div>
+    <div class="bitem" id="bsSave">Save</div>
+    <div class="bitem" id="bsSaveAs">Save As</div>
+    <div class="bitem" id="bsPrint">Print</div>
+    <div class="bitem" id="bsClose">Close</div>
+  </div>
+  <div class="main">
+    <span class="close-x" id="bsCloseX">&times;</span>
+    <h2>Save As</h2>
+    <div class="opt" id="saveHtml">📄 Save as Web Page (.html) — keeps text + drawing editable</div>
+    <div class="opt" id="savePng">🖼️ Save as Image (.png) — flattens the whole page</div>
+    <div class="opt" id="savePdf">📕 Save as PDF (.pdf) — flattens the whole page</div>
+    <div class="opt" id="saveTxt">🔤 Save as Plain Text (.txt)</div>
+  </div>
+</div>
+
+<div id="infoBar"></div>
+<input type="file" id="imageFileInput" accept="image/*" style="display:none;">
+
+<script>
+// ===================== TAB SWITCHING =====================
+document.querySelectorAll('#tabbar .tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    const t = tab.dataset.tab;
+    if(t === 'filebs'){ openBackstage(); return; }
+    document.querySelectorAll('#tabbar .tab').forEach(x=>x.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.ribbonBody').forEach(b=>b.classList.remove('show'));
+    document.getElementById('tab-'+t).classList.add('show');
+  });
+});
+
+function showInfo(msg){
+  const bar = document.getElementById('infoBar');
+  bar.textContent = msg; bar.classList.add('show');
+  clearTimeout(bar._t); bar._t = setTimeout(()=>bar.classList.remove('show'), 1800);
+}
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+
+// ===================== DOCUMENT EDITING =====================
+const page = document.getElementById('page');
+page.focus();
+
+function exec(cmd, val=null){ document.execCommand(cmd, false, val); page.focus(); updateButtonStates(); }
+
+document.getElementById('boldBtn').onclick = ()=>exec('bold');
+document.getElementById('italicBtn').onclick = ()=>exec('italic');
+document.getElementById('underlineBtn').onclick = ()=>exec('underline');
+document.getElementById('strikeBtn').onclick = ()=>exec('strikeThrough');
+document.getElementById('subBtn').onclick = ()=>exec('subscript');
+document.getElementById('supBtn').onclick = ()=>exec('superscript');
+document.getElementById('clearFormat').onclick = ()=>exec('removeFormat');
+document.getElementById('alignLeft').onclick = ()=>exec('justifyLeft');
+document.getElementById('alignCenter').onclick = ()=>exec('justifyCenter');
+document.getElementById('alignRight').onclick = ()=>exec('justifyRight');
+document.getElementById('alignJustify').onclick = ()=>exec('justifyFull');
+document.getElementById('ulBtn').onclick = ()=>exec('insertUnorderedList');
+document.getElementById('olBtn').onclick = ()=>exec('insertOrderedList');
+document.getElementById('indentBtn').onclick = ()=>exec('indent');
+document.getElementById('outdentBtn').onclick = ()=>exec('outdent');
+document.getElementById('cutBtn').onclick = ()=>{ document.execCommand('cut'); showInfo('Cut'); };
+document.getElementById('copyBtn').onclick = ()=>{ document.execCommand('copy'); showInfo('Copied'); };
+document.getElementById('pasteBtn').onclick = async ()=>{
+  try{ const t = await navigator.clipboard.readText(); document.execCommand('insertText', false, t); }
+  catch(e){ showInfo('Browser blocked paste — use Ctrl+V instead'); }
+  page.focus();
+};
+
+document.getElementById('fontFamily').onchange = e=>exec('fontName', e.target.value);
+document.getElementById('fontSize').onchange = e=>{
+  // execCommand fontSize only supports 1-7, so wrap manually for real px sizing
+  const px = e.target.value;
+  const sel = window.getSelection();
+  if(sel.rangeCount && !sel.isCollapsed){
+    document.execCommand('fontSize', false, '7');
+    document.querySelectorAll('#page font[size="7"]').forEach(f=>{ f.removeAttribute('size'); f.style.fontSize = px+'pt'; });
+  }
+  page.focus();
+};
+let curFontPx = 14;
+document.getElementById('growFont').onclick = ()=>{ curFontPx+=2; wrapFontSize(curFontPx+'pt'); };
+document.getElementById('shrinkFont').onclick = ()=>{ curFontPx=Math.max(6,curFontPx-2); wrapFontSize(curFontPx+'pt'); };
+function wrapFontSize(sz){
+  document.execCommand('fontSize', false, '7');
+  document.querySelectorAll('#page font[size="7"]').forEach(f=>{ f.removeAttribute('size'); f.style.fontSize = sz; });
+  page.focus();
+}
+
+document.getElementById('hlColor').oninput = e=>{ document.getElementById('hlBar').style.background = e.target.value; exec('hiliteColor', e.target.value); };
+document.getElementById('fcColor').oninput = e=>{ document.getElementById('fcBar').style.background = e.target.value; exec('foreColor', e.target.value); };
+document.getElementById('shColor').oninput = e=>{
+  document.getElementById('shBar').style.background = e.target.value;
+  const sel = window.getSelection();
+  if(sel.rangeCount){ const block = closestBlock(sel.anchorNode); if(block) block.style.background = e.target.value; }
+};
+document.getElementById('showParaBtn').onclick = function(){
+  this.classList.toggle('active');
+  page.style.setProperty('--show-para', this.classList.contains('active') ? '1':'0');
+  showInfo(this.classList.contains('active') ? 'Showing formatting marks (visual only)' : 'Formatting marks hidden');
+};
+
+// Format painter
+let painterFormat = null;
+document.getElementById('paintBtn').onclick = ()=>{
+  const sel = window.getSelection();
+  if(sel.rangeCount && !sel.isCollapsed){
+    const node = sel.anchorNode.nodeType===3 ? sel.anchorNode.parentElement : sel.anchorNode;
+    const cs = getComputedStyle(node);
+    painterFormat = { fontWeight:cs.fontWeight, fontStyle:cs.fontStyle, textDecoration:cs.textDecorationLine, color:cs.color, fontFamily:cs.fontFamily, fontSize:cs.fontSize };
+    showInfo('Format Painter: now select text to apply the copied format');
+  } else { showInfo('Select some text first, then click Format Painter'); }
+};
+page.addEventListener('mouseup', ()=>{
+  if(painterFormat){
+    const sel = window.getSelection();
+    if(sel.rangeCount && !sel.isCollapsed){
+      const range = sel.getRangeAt(0);
+      const span = document.createElement('span');
+      Object.assign(span.style, painterFormat);
+      try{ range.surroundContents(span); }catch(e){}
+      painterFormat = null;
+      showInfo('Format applied');
+    }
+  }
+});
+
+function closestBlock(node){
+  let n = node;
+  while(n && n !== page){
+    if(n.nodeType===1 && /^(P|H1|H2|H3|DIV|BLOCKQUOTE|LI)$/.test(n.tagName)) return n;
+    n = n.parentNode;
+  }
+  return null;
+}
+
+function updateButtonStates(){
+  ['bold','italic','underline','strikeThrough','subscript','superscript','justifyLeft','justifyCenter','justifyRight','justifyFull'].forEach(cmd=>{
+    const map = {bold:'boldBtn',italic:'italicBtn',underline:'underlineBtn',strikeThrough:'strikeBtn',subscript:'subBtn',superscript:'supBtn',justifyLeft:'alignLeft',justifyCenter:'alignCenter',justifyRight:'alignRight',justifyFull:'alignJustify'};
+    const btn = document.getElementById(map[cmd]);
+    if(!btn) return;
+    try{ btn.classList.toggle('active', document.queryCommandState(cmd)); }catch(e){}
+  });
+}
+document.addEventListener('selectionchange', ()=>{ if(document.activeElement===page || page.contains(document.getSelection().anchorNode)) updateButtonStates(); });
+
+// Styles gallery
+document.querySelectorAll('.style-thumb').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.style-thumb').forEach(x=>x.classList.remove('selected'));
+    t.classList.add('selected');
+    applyStyle(t.dataset.style);
+  });
+});
+function applyStyle(name){
+  page.focus();
+  const map = {
+    normal:'P', nospacing:'P', heading1:'H1', heading2:'H2', title:'H1', subtitle:'P', quote:'BLOCKQUOTE',
+    subtleem:null, emphasis:null, intenseem:null, strong:null
+  };
+  if(name==='emphasis'){ exec('italic'); return; }
+  if(name==='strong'){ exec('bold'); return; }
+  if(name==='subtleem' || name==='intenseem'){
+    const sel = window.getSelection();
+    if(sel.rangeCount && !sel.isCollapsed){
+      const range = sel.getRangeAt(0);
+      const wrap = document.createElement(name==='subtleem' ? 'em':'span');
+      wrap.className = name==='subtleem' ? 'subtle-em':'intense-em';
+      try{ range.surroundContents(wrap); }catch(e){}
+    }
+    return;
+  }
+  const tag = map[name];
+  document.execCommand('formatBlock', false, tag);
+  const sel = window.getSelection();
+  const block = sel.rangeCount ? closestBlock(sel.anchorNode) : null;
+  if(block){
+    block.className = '';
+    if(name==='nospacing') block.classList.add('nospacing');
+    if(name==='title') block.classList.add('doc-title');
+    if(name==='subtitle') block.classList.add('doc-subtitle');
+  }
+}
+
+// Find / Replace / Select
+document.getElementById('findBtn').onclick = ()=>openModal('findModal');
+document.getElementById('replaceBtn').onclick = ()=>openModal('replaceModal');
+document.getElementById('selectAllBtn').onclick = ()=>{ page.focus(); document.execCommand('selectAll'); };
+function doFind(){
+  const q = document.getElementById('findInput').value;
+  if(!q) return;
+  if(window.find){ window.find(q); } else { showInfo('Find not supported in this browser'); }
+}
+function doReplaceAll(){
+  const find = document.getElementById('replaceFindInput').value;
+  const rep = document.getElementById('replaceWithInput').value;
+  if(!find) return;
+  const walker = document.createTreeWalker(page, NodeFilter.SHOW_TEXT);
+  let n, count=0;
+  while(n = walker.nextNode()){
+    if(n.nodeValue.includes(find)){ n.nodeValue = n.nodeValue.split(find).join(rep); count++; }
+  }
+  showInfo(count+' replacement(s) made');
+  closeModal('replaceModal');
+}
+
+// ===================== INSERT TAB =====================
+document.getElementById('insTableBtn').onclick = ()=>openModal('tableModal');
+function doInsertTable(){
+  const r = parseInt(document.getElementById('tableRows').value)||3;
+  const c = parseInt(document.getElementById('tableCols').value)||3;
+  let html = '<table style="border-collapse:collapse;width:100%;margin:8px 0;">';
+  for(let i=0;i<r;i++){ html+='<tr>'; for(let j=0;j<c;j++){ html+='<td style="border:1px solid #999;padding:6px;min-width:40px;">&nbsp;</td>'; } html+='</tr>'; }
+  html += '</table><p><br></p>';
+  page.focus();
+  document.execCommand('insertHTML', false, html);
+  closeModal('tableModal');
+}
+
+document.getElementById('insPictureBtn').onclick = ()=>document.getElementById('imageFileInput').click();
+document.getElementById('imageFileInput').onchange = function(e){
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    page.focus();
+    document.execCommand('insertHTML', false, '<img src="'+ev.target.result+'" style="max-width:100%;">');
+  };
+  reader.readAsDataURL(file);
+  e.target.value='';
+};
+
+document.getElementById('insShapesBtn').onclick = ()=>openModal('shapeModal');
+document.querySelectorAll('#shapeModal [data-shape]').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    const glyphs = {rect:'▭',circle:'◯',triangle:'△',arrow:'➜',star:'★',line:'╱'};
+    page.focus();
+    document.execCommand('insertHTML', false, '<span style="font-size:40px;display:inline-block;margin:4px;">'+glyphs[b.dataset.shape]+'</span>');
+    closeModal('shapeModal');
+  });
+});
+
+document.getElementById('insTextboxBtn').onclick = ()=>{
+  page.focus();
+  document.execCommand('insertHTML', false, '<div contenteditable="true" style="border:1px dashed #888;padding:10px;width:220px;display:inline-block;min-height:60px;margin:6px;">Text box — click to edit</div>');
+};
+document.getElementById('insBreakBtn').onclick = ()=>{
+  page.focus();
+  document.execCommand('insertHTML', false, '<div style="border-top:2px dashed #999;margin:16px 0;padding-top:4px;color:#999;font-size:10px;">— Page Break —</div>');
+};
+document.getElementById('insSymbolBtn').onclick = ()=>{
+  const sym = prompt('Type or paste a symbol to insert (e.g. © ® ™ § ± ≈ ★):','©');
+  if(sym){ page.focus(); document.execCommand('insertText', false, sym); }
+};
+document.getElementById('insCitationBtn') && (document.getElementById('insCitationBtn').onclick = ()=>{ page.focus(); document.execCommand('insertHTML', false, '<sup>[1]</sup>'); });
+document.getElementById('insFootnoteBtn') && (document.getElementById('insFootnoteBtn').onclick = ()=>{ page.focus(); document.execCommand('insertHTML', false, '<sup>1</sup>'); });
+
+// ===================== DRAW TAB (INK OVER THE PAGE) =====================
+const pageWrap = document.getElementById('pageWrap');
+const inkCanvas = document.getElementById('inkCanvas');
+const ictx = inkCanvas.getContext('2d');
+let drawMode = false, drawing=false, lastX=0, lastY=0;
+let penColor = '#000000', penSize = 3, tool='pen'; // pen | highlighter | eraser
+
+function resizeCanvas(){
+  const w = pageWrap.offsetWidth, h = pageWrap.offsetHeight;
+  const img = inkCanvas.width ? ictx.getImageData(0,0,inkCanvas.width,inkCanvas.height) : null;
+  inkCanvas.width = w; inkCanvas.height = h;
+  if(img) ictx.putImageData(img,0,0);
+}
+new ResizeObserver(resizeCanvas).observe(pageWrap);
+setTimeout(resizeCanvas, 50);
+
+document.getElementById('drawToggleBtn').onclick = function(){
+  drawMode = !drawMode;
+  inkCanvas.style.pointerEvents = drawMode ? 'auto':'none';
+  this.textContent = '✏️ Draw Mode: ' + (drawMode ? 'ON':'OFF');
+  page.contentEditable = drawMode ? 'false' : 'true';
+  showInfo(drawMode ? 'Draw mode ON — sketch over the page' : 'Draw mode OFF — back to typing');
+};
+
+document.querySelectorAll('#penRow .pen-swatch[data-color]').forEach(sw=>{
+  sw.addEventListener('click', ()=>{
+    document.querySelectorAll('#penRow .pen-swatch').forEach(x=>x.classList.remove('active'));
+    sw.classList.add('active');
+    penColor = sw.dataset.color; tool='pen';
+  });
+});
+document.getElementById('penCustomColor').oninput = e=>{ penColor = e.target.value; tool='pen'; document.querySelectorAll('#penRow .pen-swatch').forEach(x=>x.classList.remove('active')); };
+document.getElementById('penSize').oninput = e=>{ penSize = parseInt(e.target.value); };
+document.getElementById('highlighterTool').onclick = ()=>{ tool='highlighter'; showInfo('Highlighter selected'); };
+document.getElementById('eraserTool').onclick = ()=>{ tool='eraser'; showInfo('Eraser selected'); };
+document.getElementById('clearInkBtn').onclick = ()=>{ ictx.clearRect(0,0,inkCanvas.width,inkCanvas.height); showInfo('Drawing cleared'); };
+
+function inkPos(e){
+  const rect = inkCanvas.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  return { x: t.clientX-rect.left, y: t.clientY-rect.top };
+}
+function startInk(e){
+  if(!drawMode) return; e.preventDefault();
+  drawing = true; const p = inkPos(e); lastX=p.x; lastY=p.y;
+  ictx.beginPath(); ictx.arc(p.x,p.y, penSize/2, 0, Math.PI*2);
+  setInkStyle(); ictx.fill();
+}
+function moveInk(e){
+  if(!drawing) return; e.preventDefault();
+  const p = inkPos(e);
+  setInkStyle();
+  if(tool==='eraser'){ ictx.clearRect(p.x-penSize, p.y-penSize, penSize*2, penSize*2); }
+  else{ ictx.beginPath(); ictx.moveTo(lastX,lastY); ictx.lineTo(p.x,p.y); ictx.stroke(); }
+  lastX=p.x; lastY=p.y;
+}
+function stopInk(){ drawing=false; }
+function setInkStyle(){
+  if(tool==='highlighter'){ ictx.strokeStyle=penColor; ictx.globalAlpha=0.35; ictx.lineWidth=penSize*4; ictx.lineCap='square'; }
+  else { ictx.strokeStyle=penColor; ictx.fillStyle=penColor; ictx.globalAlpha=1; ictx.lineWidth=penSize; ictx.lineCap='round'; }
+}
+inkCanvas.addEventListener('mousedown', startInk);
+inkCanvas.addEventListener('mousemove', moveInk);
+inkCanvas.addEventListener('mouseup', stopInk);
+inkCanvas.addEventListener('mouseleave', stopInk);
+inkCanvas.addEventListener('touchstart', startInk, {passive:false});
+inkCanvas.addEventListener('touchmove', moveInk, {passive:false});
+inkCanvas.addEventListener('touchend', stopInk);
+
+// ===================== DESIGN TAB =====================
+document.querySelectorAll('.theme-swatch').forEach(sw=>{
+  sw.addEventListener('click', ()=>{
+    const c = sw.dataset.theme;
+    document.querySelectorAll('#page h1, #page h2').forEach(h=>h.style.color=c);
+    showInfo('Theme color applied to headings');
+  });
+});
+document.getElementById('pageColorBtn').onclick = ()=>{
+  const c = prompt('Enter a page background color (hex):','#ffffff');
+  if(c){ page.style.background = c; }
+};
+
+// ===================== PAGE LAYOUT TAB =====================
+document.querySelectorAll('[data-margin]').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    const m = {normal:96, narrow:48, wide:144}[b.dataset.margin];
+    page.style.padding = m+'px';
+    showInfo(b.dataset.margin+' margins applied');
+  });
+});
+document.getElementById('orientPortrait').onclick = ()=>setPageSize(currentSizeName, 'portrait');
+document.getElementById('orientLandscape').onclick = ()=>setPageSize(currentSizeName, 'landscape');
+document.querySelectorAll('[data-size]').forEach(b=>{
+  b.addEventListener('click', ()=>setPageSize(b.dataset.size, currentOrientation));
+});
+let currentSizeName='letter', currentOrientation='portrait';
+function setPageSize(sizeName, orientation){
+  currentSizeName = sizeName; currentOrientation = orientation;
+  let w,h;
+  if(sizeName==='a4'){ w=794; h=1123; } else { w=816; h=1056; }
+  if(orientation==='landscape'){ const t=w; w=h; h=t; }
+  pageWrap.style.width = w+'px'; pageWrap.style.minHeight = h+'px';
+  setTimeout(resizeCanvas, 50);
+  showInfo(sizeName+' / '+orientation+' applied');
+}
+
+// ===================== VIEW TAB =====================
+document.getElementById('zoomRange').oninput = e=>{
+  const z = e.target.value;
+  document.getElementById('zoomLabel').textContent = z+'%';
+  pageWrap.style.transform = 'scale('+(z/100)+')';
+  pageWrap.style.marginBottom = (pageWrap.offsetHeight * (z/100 - 1)) + 'px';
+};
+document.getElementById('viewRead').onclick = ()=>{ page.contentEditable='false'; drawMode=false; inkCanvas.style.pointerEvents='none'; showInfo('Read Mode (view only)'); };
+document.getElementById('viewPrint').onclick = ()=>{ page.contentEditable='true'; showInfo('Print Layout (editing on)'); };
+
+// ===================== REVIEW TAB (light touches) =====================
+document.getElementById('spellcheckBtn').onclick = ()=>{ page.spellcheck = !page.spellcheck; page.focus(); showInfo('Spellcheck '+(page.spellcheck?'ON':'OFF')); };
+document.getElementById('newCommentBtn').onclick = ()=>{
+  const sel = window.getSelection();
+  if(sel.rangeCount && !sel.isCollapsed){
+    const c = prompt('Comment text:'); if(!c) return;
+    const range = sel.getRangeAt(0);
+    const mark = document.createElement('mark');
+    mark.style.background='#fff2a8'; mark.title = 'Comment: '+c;
+    try{ range.surroundContents(mark); }catch(e){}
+  } else showInfo('Select text first to comment on it');
+};
+document.getElementById('trackChangesBtn').onclick = function(){ this.classList.toggle('active'); showInfo('Track Changes '+(this.classList.contains('active')?'ON':'OFF')); };
+
+// ===================== FILE BACKSTAGE =====================
+function openBackstage(){ document.getElementById('backstage').classList.add('show'); }
+function closeBackstage(){ document.getElementById('backstage').classList.remove('show'); }
+document.getElementById('bsCloseX').onclick = closeBackstage;
+document.getElementById('bsClose').onclick = closeBackstage;
+document.getElementById('bsNew').onclick = ()=>{ if(confirm('Clear the document and start new?')){ page.innerHTML='<h1 class="doc-title">Document1</h1><p><br></p>'; ictx.clearRect(0,0,inkCanvas.width,inkCanvas.height); } closeBackstage(); };
+document.getElementById('bsOpen').onclick = ()=>{ showInfo('Open: use "Save as Web Page" then re-open that .html file in your browser'); closeBackstage(); };
+document.getElementById('bsSave').onclick = ()=>{ saveAsHtml(); closeBackstage(); };
+document.getElementById('bsPrint').onclick = ()=>{ closeBackstage(); window.print(); };
+document.getElementById('qatSave').onclick = saveAsHtml;
+document.getElementById('qatUndo').onclick = ()=>exec('undo');
+document.getElementById('qatRedo').onclick = ()=>exec('redo');
+
+document.getElementById('saveHtml').onclick = saveAsHtml;
+document.getElementById('saveTxt').onclick = ()=>{
+  const blob = new Blob([page.innerText], {type:'text/plain'});
+  downloadBlob(blob, 'document1.txt'); closeBackstage();
+};
+document.getElementById('savePng').onclick = async ()=>{
+  closeBackstage();
+  const canvas = await flattenPage();
+  canvas.toBlob(b=>downloadBlob(b, 'document1.png'));
+};
+document.getElementById('savePdf').onclick = async ()=>{
+  closeBackstage();
+  const canvas = await flattenPage();
+  const {jsPDF} = window.jspdf;
+  const orientation = canvas.width > canvas.height ? 'l':'p';
+  const pdf = new jsPDF({orientation, unit:'px', format:[canvas.width, canvas.height]});
+  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0,0, canvas.width, canvas.height);
+  pdf.save('document1.pdf');
+};
+
+async function flattenPage(){
+  const w = pageWrap.offsetWidth, h = pageWrap.offsetHeight;
+  const textCanvas = await html2canvas(page, {backgroundColor:'#ffffff', width:w, height:h});
+  const out = document.createElement('canvas'); out.width=w; out.height=h;
+  const octx = out.getContext('2d');
+  octx.drawImage(textCanvas,0,0,w,h);
+  octx.drawImage(inkCanvas,0,0,w,h);
+  return out;
+}
+function saveAsHtml(){
+  const doc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Document1</title>'+
+    '<style>body{font-family:Calibri,sans-serif;padding:40px;max-width:800px;margin:auto;} h1.doc-title{font-size:32px;color:#0f4761;} p.doc-subtitle{font-style:italic;color:#666;}</style>'+
+    '</head><body>'+page.innerHTML+'<hr><img src="'+inkCanvas.toDataURL()+'" style="max-width:100%;"></body></html>';
+  const blob = new Blob([doc], {type:'text/html'});
+  downloadBlob(blob, 'document1.html');
+  showInfo('Saved document1.html');
+}
+function downloadBlob(blob, name){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e=>{
+  if(e.ctrlKey || e.metaKey){
+    if(e.key==='b'){ e.preventDefault(); exec('bold'); }
+    else if(e.key==='i'){ e.preventDefault(); exec('italic'); }
+    else if(e.key==='u'){ e.preventDefault(); exec('underline'); }
+    else if(e.key==='s'){ e.preventDefault(); saveAsHtml(); }
+    else if(e.key==='z'){ e.preventDefault(); exec('undo'); }
+    else if(e.key==='y'){ e.preventDefault(); exec('redo'); }
+  }
+});
+
+setTimeout(()=>showInfo('Type in the page, or open the DRAW tab to sketch over it ✏️'), 600);
+</script>
+</body>
+</html>
